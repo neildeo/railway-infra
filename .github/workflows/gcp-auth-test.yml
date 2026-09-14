@@ -17,3 +17,11 @@ jobs:
         with:
           workload_identity_provider: projects/955463760385/locations/global/workloadIdentityPools/github-actions/providers/github-actions
           service_account: terraform-ci@railway-analytics-508615.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+      
+      - name: Describe project
+        run: gcloud projects describe "$PROJECT_ID"
+        env:
+          PROJECT_ID: railway-analytics-508615
