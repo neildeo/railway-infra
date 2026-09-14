@@ -21,7 +21,22 @@ jobs:
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
       
-      - name: Describe project
-        run: gcloud projects describe "$PROJECT_ID"
+      - name: Test Terraform state bucket access
+        shell: bash
         env:
-          PROJECT_ID: railway-analytics-508615
+          STATE_BUCKET: railway-analytics-508615-terraform-state
+        run: |
+          set -euo pipefail
+      
+          echo "Listing bucket..."
+          gcloud storage ls "gs://${STATE_BUCKET}"
+      
+          echo "Writing smoke-test object..."
+          echo "hello from GitHub Actions" > smoke-test.txt
+          gcloud storage cp smoke-test.txt "gs://${STATE_BUCKET}/smoke-test/smoke-test.txt"
+      
+          echo "Reading smoke-test object..."
+          gcloud storage cat "gs://${STATE_BUCKET}/smoke-test/smoke-test.txt"
+      
+          echo "Deleting smoke-test object..."
+          gcloud storage rm "gs://${STATE_BUCKET}/smoke-test/smoke-test.txt"
