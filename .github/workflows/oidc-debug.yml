@@ -1,0 +1,16 @@
+name: Inspect OIDC claims
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Inspect OIDC claims
+        uses: github/actions-oidc-debugger@9649f894cd935032350792327ca5354e88e662e3
