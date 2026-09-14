@@ -13,4 +13,6 @@ jobs:
 
     steps:
       - name: Inspect OIDC claims
-        uses: github/actions-oidc-debugger@9649f894cd935032350792327ca5354e88e662e3
+        uses: steve-todorov/oidc-debugger-action@b6d83b24a379e77233fb6b26f1c1a662c4bf443c
+        with:
+          audience: railway-infra
