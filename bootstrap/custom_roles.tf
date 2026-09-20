@@ -18,6 +18,7 @@ resource "google_project_iam_custom_role" "terraform_plan" {
     "storage.buckets.getIamPolicy",
 
     "iam.workloadIdentityPools.get",
+    "iam.workloadIdentityPools.getAttestationRules",
     "iam.workloadIdentityPools.list",
     "iam.workloadIdentityPoolProviders.get",
     "iam.workloadIdentityPoolProviders.list",
