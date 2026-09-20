@@ -1,3 +1,3 @@
 provider "google" {
-  project = "railway-analytics-508615"
+  project = local.project_id
 }
