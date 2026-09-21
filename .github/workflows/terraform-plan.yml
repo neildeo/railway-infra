@@ -3,8 +3,6 @@ name: Terraform plan
 on:
   pull_request:
     paths:
-      - "platform/**"
-      - ".github/workflows/terraform-plan.yml"
 
 jobs:
   detect-roots:
@@ -67,7 +65,7 @@ jobs:
           echo "Terraform roots to plan: $roots_json"
 
   plan:
-    name: Terraform plan (${{ matrix.root }})
+    name: Plan (${{ matrix.root }})
     needs: detect-roots
 
     if: needs.detect-roots.outputs.roots != '[]'
@@ -114,3 +112,41 @@ jobs:
 
       - name: Plan Terraform changes
         run: terraform plan -input=false -no-color
+
+  plan-check:
+    name: Terraform plan
+    needs:
+      - detect-roots
+      - plan
+
+    if: always()
+
+    runs-on: ubuntu-latest
+
+    env:
+      ROOTS: ${{ needs.detect-roots.outputs.roots }}
+      DETECT_RESULT: ${{ needs.detect-roots.result }}
+      PLAN_RESULT: ${{ needs.plan.result }}
+
+    steps:
+      - name: Check plan result
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$DETECT_RESULT" != "success" ]]; then
+            echo "Root detection failed."
+            exit 1
+          fi
+
+          if [[ "$ROOTS" == "[]" ]]; then
+            echo "No non-bootstrap Terraform roots changed."
+            exit 0
+          fi
+
+          if [[ "$PLAN_RESULT" != "success" ]]; then
+            echo "One or more Terraform plans failed."
+            exit 1
+          fi
+
+          echo "All Terraform plans succeeded."
