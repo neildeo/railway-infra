@@ -6,7 +6,7 @@ resource "google_storage_bucket" "network_rail_open_data_raw" {
 
   uniform_bucket_level_access = true
   public_access_prevention    = "enforced"
-  deletion_policy = "PREVENT"
+  deletion_policy             = "PREVENT"
 
   versioning {
     enabled = true
