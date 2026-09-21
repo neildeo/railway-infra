@@ -26,3 +26,16 @@ resource "google_project_iam_custom_role" "terraform_plan" {
 
   project = local.project_id
 }
+
+
+resource "google_project_iam_custom_role" "terraform_apply" {
+  role_id     = "TerraformApply"
+  title       = "Terraform Apply"
+  description = "Project-level permissions temporarily granted to terraform-ci for Terraform apply operations."
+
+  permissions = [
+    "storage.buckets.create",
+  ]
+
+  project = local.project_id
+}
