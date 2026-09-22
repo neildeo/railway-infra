@@ -49,3 +49,28 @@ resource "google_storage_bucket" "terraform_state" {
     }
   }
 }
+
+
+resource "google_storage_bucket" "terraform_artifacts" {
+  name     = local.terraform_artifacts_bucket_name
+  location = "EU"
+
+  storage_class = "STANDARD"
+
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+
+  soft_delete_policy {
+    retention_duration_seconds = 0
+  }
+
+  lifecycle_rule {
+    action {
+      type = "Delete"
+    }
+
+    condition {
+      age = 1
+    }
+  }
+}
