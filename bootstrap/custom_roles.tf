@@ -22,6 +22,8 @@ resource "google_project_iam_custom_role" "terraform_plan" {
     "iam.workloadIdentityPools.list",
     "iam.workloadIdentityPoolProviders.get",
     "iam.workloadIdentityPoolProviders.list",
+
+    "privilegedaccessmanager.grants.get",
   ]
 
   project = local.project_id
