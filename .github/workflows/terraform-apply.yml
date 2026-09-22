@@ -1,0 +1,450 @@
+name: Terraform apply
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: railway-analytics-508615
+  ARTIFACT_BUCKET: railway-analytics-508615-terraform-artifacts
+
+jobs:
+  detect-roots:
+    name: Detect changed Terraform roots
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    outputs:
+      roots: ${{ steps.roots.outputs.roots }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed Terraform roots
+        id: roots
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BASE_SHA="${{ github.event.before }}"
+          HEAD_SHA="${{ github.sha }}"
+
+          mapfile -t changed_files < <(
+            git diff --name-only "$BASE_SHA" "$HEAD_SHA"
+          )
+
+          roots=()
+
+          add_root() {
+            local candidate="$1"
+
+            if [[ -d "$candidate" ]] &&
+               [[ ! " ${roots[*]} " =~ " ${candidate} " ]]; then
+              roots+=("$candidate")
+            fi
+          }
+
+          for file in "${changed_files[@]}"; do
+            case "$file" in
+              platform/*)
+                add_root "platform"
+                ;;
+              .github/workflows/terraform-apply.yml)
+                add_root "platform"
+                ;;
+            esac
+          done
+
+          roots_json="$(
+            printf '%s\n' "${roots[@]}" |
+              jq -R -s -c 'split("\n") | map(select(length > 0))'
+          )"
+
+          echo "roots=$roots_json" >> "$GITHUB_OUTPUT"
+          echo "Terraform roots to apply: $roots_json"
+
+  plan:
+    name: Plan (${{ matrix.root }})
+    needs: detect-roots
+
+    if: needs.detect-roots.outputs.roots != '[]'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        root: ${{ fromJSON(needs.detect-roots.outputs.roots) }}
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    defaults:
+      run:
+        working-directory: ${{ matrix.root }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: projects/955463760385/locations/global/workloadIdentityPools/github-actions/providers/github-actions
+          service_account: terraform-ci@railway-analytics-508615.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: "1.16.2"
+
+      - name: Initialise Terraform
+        run: terraform init -input=false
+
+      - name: Create saved plan
+        run: terraform plan -input=false -out=tfplan
+
+      - name: Render human-readable plan
+        run: terraform show -no-color tfplan > plan.txt
+
+      - name: Upload saved plan to GCS
+        run: |
+          gcloud storage cp \
+            tfplan \
+            "gs://${ARTIFACT_BUCKET}/plans/${{ github.run_id }}/${{ matrix.root }}.tfplan"
+
+      - name: Upload readable plan to GCS
+        run: |
+          gcloud storage cp \
+            plan.txt \
+            "gs://${ARTIFACT_BUCKET}/plans/${{ github.run_id }}/${{ matrix.root }}.txt"
+
+  review-plans:
+    name: Review Terraform plans
+    needs:
+      - detect-roots
+      - plan
+
+    if: needs.detect-roots.outputs.roots != '[]' && needs.plan.result == 'success'
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: projects/955463760385/locations/global/workloadIdentityPools/github-actions/providers/github-actions
+          service_account: terraform-ci@railway-analytics-508615.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Build plan summary
+        shell: bash
+        env:
+          ROOTS: ${{ needs.detect-roots.outputs.roots }}
+        run: |
+          set -euo pipefail
+
+          echo "# Terraform apply plans" >> "$GITHUB_STEP_SUMMARY"
+          echo >> "$GITHUB_STEP_SUMMARY"
+          echo "Review these plans before approving the PAM request." >> "$GITHUB_STEP_SUMMARY"
+          echo >> "$GITHUB_STEP_SUMMARY"
+
+          mapfile -t roots < <(
+            printf '%s' "$ROOTS" | jq -r '.[]'
+          )
+
+          for root in "${roots[@]}"; do
+            plan_file="${root}.txt"
+
+            gcloud storage cp \
+              "gs://${ARTIFACT_BUCKET}/plans/${{ github.run_id }}/${root}.txt" \
+              "$plan_file"
+
+            plan_summary="$(
+              grep -E '^(Plan:|No changes\.)' "$plan_file" |
+                tail -n 1 ||
+                true
+            )"
+
+            if [[ -z "$plan_summary" ]]; then
+              plan_summary="See full plan below."
+            fi
+
+            {
+              echo "## ${root}"
+              echo
+              echo "**${plan_summary}**"
+              echo
+              echo "<details>"
+              echo "<summary>Show full plan</summary>"
+              echo
+              echo '```'
+              cat "$plan_file"
+              echo '```'
+              echo
+              echo "</details>"
+              echo
+            } >> "$GITHUB_STEP_SUMMARY"
+          done
+
+  request-pam:
+    name: Request Terraform apply access
+    needs:
+      - detect-roots
+      - review-plans
+
+    if: needs.detect-roots.outputs.roots != '[]' && needs.review-plans.result == 'success'
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      ENTITLEMENT_ID: terraform-apply
+      RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: projects/955463760385/locations/global/workloadIdentityPools/github-actions/providers/github-actions
+          service_account: terraform-ci@railway-analytics-508615.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Request PAM grant
+        id: pam
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          grant_name="$(
+            gcloud pam grants create \
+              --entitlement="$ENTITLEMENT_ID" \
+              --requested-duration="1800s" \
+              --justification="Terraform apply for GitHub Actions run: $RUN_URL" \
+              --location="global" \
+              --project="$PROJECT_ID" \
+              --format="value(name)"
+          )"
+
+          if [[ -z "$grant_name" ]]; then
+            echo "PAM grant creation did not return a grant name."
+            exit 1
+          fi
+
+          echo "grant_name=$grant_name" >> "$GITHUB_OUTPUT"
+          echo "Requested PAM grant: $grant_name"
+
+      - name: Wait for PAM approval and activation
+        shell: bash
+        env:
+          GRANT_NAME: ${{ steps.pam.outputs.grant_name }}
+        run: |
+          set -euo pipefail
+
+          while true; do
+            state="$(
+              gcloud pam grants describe "$GRANT_NAME" \
+                --format="value(state)"
+            )"
+
+            echo "PAM grant state: $state"
+
+            case "$state" in
+              ACTIVE)
+                break
+                ;;
+
+              DENIED|EXPIRED|ACTIVATION_FAILED|REVOKED|ENDED|WITHDRAWN)
+                echo "PAM grant entered terminal state: $state"
+                exit 1
+                ;;
+
+              *)
+                sleep 15
+                ;;
+            esac
+          done
+
+      - name: Wait for IAM propagation
+        run: sleep 180
+
+  apply:
+    name: Apply (${{ matrix.root }})
+    needs:
+      - detect-roots
+      - request-pam
+
+    if: needs.detect-roots.outputs.roots != '[]' && needs.request-pam.result == 'success'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        root: ${{ fromJSON(needs.detect-roots.outputs.roots) }}
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    defaults:
+      run:
+        working-directory: ${{ matrix.root }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: projects/955463760385/locations/global/workloadIdentityPools/github-actions/providers/github-actions
+          service_account: terraform-ci@railway-analytics-508615.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: "1.16.2"
+
+      - name: Initialise Terraform
+        run: terraform init -input=false
+
+      - name: Download saved plan
+        run: |
+          gcloud storage cp \
+            "gs://${ARTIFACT_BUCKET}/plans/${{ github.run_id }}/${{ matrix.root }}.tfplan" \
+            tfplan
+
+      - name: Apply saved plan
+        run: terraform apply -input=false tfplan
+
+  cleanup-plans:
+    name: Clean up Terraform plans
+    needs:
+      - detect-roots
+      - plan
+      - review-plans
+      - request-pam
+      - apply
+
+    if: always() && needs.detect-roots.outputs.roots != '[]'
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: projects/955463760385/locations/global/workloadIdentityPools/github-actions/providers/github-actions
+          service_account: terraform-ci@railway-analytics-508615.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Delete temporary plan objects
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gcloud storage rm \
+            "gs://${ARTIFACT_BUCKET}/plans/${{ github.run_id }}/**"
+
+  apply-check:
+    name: Terraform apply
+    needs:
+      - detect-roots
+      - plan
+      - review-plans
+      - request-pam
+      - apply
+      - cleanup-plans
+
+    if: always()
+
+    runs-on: ubuntu-latest
+
+    env:
+      ROOTS: ${{ needs.detect-roots.outputs.roots }}
+      DETECT_RESULT: ${{ needs.detect-roots.result }}
+      PLAN_RESULT: ${{ needs.plan.result }}
+      REVIEW_RESULT: ${{ needs.review-plans.result }}
+      PAM_RESULT: ${{ needs.request-pam.result }}
+      APPLY_RESULT: ${{ needs.apply.result }}
+      CLEANUP_RESULT: ${{ needs.cleanup-plans.result }}
+
+    steps:
+      - name: Check apply result
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$DETECT_RESULT" != "success" ]]; then
+            echo "Terraform root detection failed."
+            exit 1
+          fi
+
+          if [[ "$ROOTS" == "[]" ]]; then
+            echo "No non-bootstrap Terraform roots changed."
+            exit 0
+          fi
+
+          if [[ "$PLAN_RESULT" != "success" ]]; then
+            echo "One or more Terraform plans failed."
+            exit 1
+          fi
+
+          if [[ "$REVIEW_RESULT" != "success" ]]; then
+            echo "Terraform plan summary failed."
+            exit 1
+          fi
+
+          if [[ "$PAM_RESULT" != "success" ]]; then
+            echo "PAM elevation failed or was not approved."
+            exit 1
+          fi
+
+          if [[ "$APPLY_RESULT" != "success" ]]; then
+            echo "One or more Terraform applies failed."
+            exit 1
+          fi
+
+          if [[ "$CLEANUP_RESULT" != "success" ]]; then
+            echo "Terraform apply succeeded, but temporary plan cleanup failed."
+            exit 1
+          fi
+
+          echo "All Terraform applies succeeded and temporary plans were removed."
