@@ -53,6 +53,7 @@ resource "google_project_iam_custom_role" "terraform_apply" {
     "iam.serviceAccounts.create",
     "iam.serviceAccounts.update",
     "iam.serviceAccounts.delete",
+    "iam.serviceAccounts.actAs",
 
     "run.jobs.create",
     "run.jobs.update",
