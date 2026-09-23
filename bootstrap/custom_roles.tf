@@ -24,6 +24,18 @@ resource "google_project_iam_custom_role" "terraform_plan" {
     "iam.workloadIdentityPoolProviders.list",
 
     "privilegedaccessmanager.grants.get",
+
+    "run.jobs.get",
+    "run.jobs.list",
+    "run.jobs.getIamPolicy",
+    "run.locations.list",
+    "run.operations.get",
+
+    "artifactregistry.repositories.get",
+    "artifactregistry.repositories.list",
+    "artifactregistry.repositories.getIamPolicy",
+
+    "serviceusage.services.get",
   ]
 
   project = local.project_id
@@ -37,6 +49,14 @@ resource "google_project_iam_custom_role" "terraform_apply" {
 
   permissions = [
     "storage.buckets.create",
+
+    "iam.serviceAccounts.create",
+    "iam.serviceAccounts.update",
+    "iam.serviceAccounts.delete",
+
+    "run.jobs.create",
+    "run.jobs.update",
+    "run.jobs.delete",
   ]
 
   project = local.project_id
