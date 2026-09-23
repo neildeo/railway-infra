@@ -55,9 +55,6 @@ jobs:
               platform/*)
                 add_root "platform"
                 ;;
-              .github/workflows/terraform-apply.yml)
-                add_root "platform"
-                ;;
             esac
           done
 
@@ -219,6 +216,9 @@ jobs:
     permissions:
       contents: read
       id-token: write
+
+    outputs:
+      grant_name: ${{ steps.pam.outputs.grant_name }}
 
     env:
       ENTITLEMENT_ID: terraform-apply
@@ -383,6 +383,95 @@ jobs:
           gcloud storage rm \
             "gs://${ARTIFACT_BUCKET}/plans/${{ github.run_id }}/**"
 
+  cleanup-pam:
+    name: Clean up PAM grant
+    needs:
+      - detect-roots
+      - request-pam
+      - apply
+
+    if: always() && needs.detect-roots.outputs.roots != '[]'
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      ENTITLEMENT_ID: terraform-apply
+
+    steps:
+      - name: Check whether a PAM grant was created
+        id: grant
+        shell: bash
+        env:
+          GRANT_NAME: ${{ needs.request-pam.outputs.grant_name }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$GRANT_NAME" ]]; then
+            echo "No PAM grant was created; nothing to clean up."
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "PAM grant to clean up: $GRANT_NAME"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Authenticate to Google Cloud
+        if: steps.grant.outputs.exists == 'true'
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: projects/955463760385/locations/global/workloadIdentityPools/github-actions/providers/github-actions
+          service_account: terraform-ci@railway-analytics-508615.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        if: steps.grant.outputs.exists == 'true'
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+        with:
+          install_components: alpha
+
+      - name: Withdraw or end PAM grant
+        if: steps.grant.outputs.exists == 'true'
+        shell: bash
+        env:
+          GRANT_NAME: ${{ needs.request-pam.outputs.grant_name }}
+        run: |
+          set -euo pipefail
+
+          grant_id="${GRANT_NAME##*/}"
+
+          state="$(
+            gcloud pam grants describe "$GRANT_NAME" \
+              --format="value(state)"
+          )"
+
+          echo "Current PAM grant state: $state"
+
+          case "$state" in
+            APPROVAL_AWAITED|SCHEDULED|ACTIVE)
+              gcloud alpha pam grants withdraw \
+                "$grant_id" \
+                --entitlement="$ENTITLEMENT_ID" \
+                --location="global" \
+                --project="$PROJECT_ID"
+              ;;
+
+            DENIED|EXPIRED|ACTIVATION_FAILED|REVOKED|ENDED|WITHDRAWN)
+              echo "Grant is already terminal; no cleanup required."
+              ;;
+
+            WITHDRAWING|REVOKING)
+              echo "Grant cleanup is already in progress."
+              ;;
+
+            *)
+              echo "Unexpected PAM grant state: $state"
+              exit 1
+              ;;
+          esac
+  
   apply-check:
     name: Terraform apply
     needs:
@@ -392,6 +481,7 @@ jobs:
       - request-pam
       - apply
       - cleanup-plans
+      - cleanup-pam
 
     if: always()
 
@@ -405,6 +495,7 @@ jobs:
       PAM_RESULT: ${{ needs.request-pam.result }}
       APPLY_RESULT: ${{ needs.apply.result }}
       CLEANUP_RESULT: ${{ needs.cleanup-plans.result }}
+      PAM_CLEANUP_RESULT: ${{ needs.cleanup-pam.result }}
 
     steps:
       - name: Check apply result
@@ -444,6 +535,11 @@ jobs:
 
           if [[ "$CLEANUP_RESULT" != "success" ]]; then
             echo "Terraform apply succeeded, but temporary plan cleanup failed."
+            exit 1
+          fi
+
+          if [[ "$PAM_CLEANUP_RESULT" != "success" ]]; then
+            echo "Terraform apply completed, but PAM grant cleanup failed."
             exit 1
           fi
 
