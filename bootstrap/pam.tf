@@ -36,15 +36,6 @@ resource "google_privileged_access_manager_entitlement" "terraform_apply" {
           )
         EOT
       }
-
-      role_bindings {
-        role = "roles/iam.serviceAccountUser"
-
-        condition_expression = <<-EOT
-          resource.type == "iam.googleapis.com/ServiceAccount" &&
-          resource.name == "projects/${local.project_id}/serviceAccounts/cloud-run-dummy@${local.project_id}.iam.gserviceaccount.com"
-        EOT
-      }
     }
   }
 
