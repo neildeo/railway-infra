@@ -54,10 +54,12 @@ resource "google_project_iam_custom_role" "terraform_apply" {
     "iam.serviceAccounts.update",
     "iam.serviceAccounts.delete",
     "iam.serviceAccounts.actAs",
+    "iam.serviceAccounts.setIamPolicy",
 
     "run.jobs.create",
     "run.jobs.update",
     "run.jobs.delete",
+    "run.jobs.setIamPolicy",
   ]
 
   project = local.project_id
