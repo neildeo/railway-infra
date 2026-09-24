@@ -27,3 +27,19 @@ resource "google_cloud_run_v2_job" "railway_ingest_dummy" {
     ]
   }
 }
+
+resource "google_cloud_run_v2_job_iam_member" "railway_ingestion_ci_dummy_developer" {
+  project  = google_cloud_run_v2_job.railway_ingest_dummy.project
+  location = google_cloud_run_v2_job.railway_ingest_dummy.location
+  name     = google_cloud_run_v2_job.railway_ingest_dummy.name
+
+  role   = "roles/run.developer"
+  member = "serviceAccount:${data.google_service_account.railway_ingestion_ci.email}"
+}
+
+resource "google_service_account_iam_member" "railway_ingestion_ci_dummy_act_as" {
+  service_account_id = google_service_account.railway_ingest_dummy_runtime.name
+
+  role   = "roles/iam.serviceAccountUser"
+  member = "serviceAccount:${data.google_service_account.railway_ingestion_ci.email}"
+}
