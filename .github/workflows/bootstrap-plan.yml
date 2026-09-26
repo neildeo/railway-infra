@@ -29,6 +29,7 @@ jobs:
       - name: Detect bootstrap changes
         id: changes
         shell: bash
+        working-directory: .
         run: |
           set -euo pipefail
 

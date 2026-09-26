@@ -24,6 +24,7 @@ resource "google_project_iam_custom_role" "terraform_plan" {
     "iam.workloadIdentityPoolProviders.list",
 
     "privilegedaccessmanager.grants.get",
+    "privilegedaccessmanager.entitlements.get",
 
     "run.jobs.get",
     "run.jobs.list",
@@ -36,6 +37,9 @@ resource "google_project_iam_custom_role" "terraform_plan" {
     "artifactregistry.repositories.getIamPolicy",
 
     "serviceusage.services.get",
+    "serviceusage.services.list",
+
+    "secretmanager.secrets.get",
   ]
 
   project = local.project_id
@@ -60,6 +64,11 @@ resource "google_project_iam_custom_role" "terraform_apply" {
     "run.jobs.update",
     "run.jobs.delete",
     "run.jobs.setIamPolicy",
+
+    "secretmanager.secrets.create",
+    "secretmanager.secrets.get",
+    "secretmanager.secrets.update",
+    "secretmanager.secrets.delete",
   ]
 
   project = local.project_id
