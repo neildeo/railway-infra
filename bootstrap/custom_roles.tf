@@ -36,6 +36,8 @@ resource "google_project_iam_custom_role" "terraform_plan" {
     "artifactregistry.repositories.getIamPolicy",
 
     "serviceusage.services.get",
+
+    "secretmanager.secrets.get",
   ]
 
   project = local.project_id
@@ -60,6 +62,11 @@ resource "google_project_iam_custom_role" "terraform_apply" {
     "run.jobs.update",
     "run.jobs.delete",
     "run.jobs.setIamPolicy",
+
+    "secretmanager.secrets.create",
+    "secretmanager.secrets.get",
+    "secretmanager.secrets.update",
+    "secretmanager.secrets.delete",
   ]
 
   project = local.project_id
