@@ -16,7 +16,7 @@ resource "google_cloud_run_v2_job" "railway_ingest_dummy" {
       service_account = google_service_account.railway_ingest_dummy_runtime.email
 
       containers {
-        image = "europe-west1-docker.pkg.dev/railway-analytics-508615/railway-containers/cloud-run-bootstrap@sha256:2d9ddc91c418e7d47e928c4ffc991979f4efae8e84cf44138941b00b3e2a311f"
+        image = local.default_cloud_run_job_image
       }
     }
   }

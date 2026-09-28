@@ -16,3 +16,10 @@ resource "google_storage_bucket" "network_rail_open_data_raw" {
     retention_duration_seconds = 604800
   }
 }
+
+resource "google_storage_bucket_iam_member" "railway_ingest_runner_raw_object_user" {
+  bucket = google_storage_bucket.network_rail_open_data_raw.name
+  role   = "roles/storage.objectUser"
+
+  member = "serviceAccount:${google_service_account.railway_ingest_runner.email}"
+}
