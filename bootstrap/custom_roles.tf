@@ -41,6 +41,11 @@ resource "google_project_iam_custom_role" "terraform_plan" {
 
     "secretmanager.secrets.get",
     "secretmanager.secrets.getIamPolicy",
+
+    "cloudscheduler.jobs.get",
+    "cloudscheduler.jobs.list",
+    "cloudscheduler.locations.get",
+    "cloudscheduler.locations.list",
   ]
 
   project = local.project_id
@@ -70,6 +75,10 @@ resource "google_project_iam_custom_role" "terraform_apply" {
     "secretmanager.secrets.update",
     "secretmanager.secrets.delete",
     "secretmanager.secrets.setIamPolicy",
+
+    "cloudscheduler.jobs.create",
+    "cloudscheduler.jobs.update",
+    "cloudscheduler.jobs.delete",
   ]
 
   project = local.project_id
