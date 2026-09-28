@@ -3,3 +3,10 @@ resource "google_service_account" "railway_ingest_runner" {
   account_id   = "railway-ingest-runner"
   display_name = "Railway ingestion runner"
 }
+
+resource "google_service_account_iam_member" "railway_ingestion_ci_runner_act_as" {
+  service_account_id = google_service_account.railway_ingest_runner.name
+
+  role   = "roles/iam.serviceAccountUser"
+  member = "serviceAccount:${data.google_service_account.railway_ingestion_ci.email}"
+}
