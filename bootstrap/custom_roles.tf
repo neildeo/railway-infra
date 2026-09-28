@@ -79,6 +79,7 @@ resource "google_project_iam_custom_role" "terraform_apply" {
     "cloudscheduler.jobs.create",
     "cloudscheduler.jobs.update",
     "cloudscheduler.jobs.delete",
+    "cloudscheduler.jobs.enable",
   ]
 
   project = local.project_id
