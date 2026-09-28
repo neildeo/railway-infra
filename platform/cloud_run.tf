@@ -30,3 +30,12 @@ resource "google_cloud_run_v2_job" "railway_ingest_corpus" {
     ]
   }
 }
+
+resource "google_cloud_run_v2_job_iam_member" "railway_ingestion_ci_corpus_developer" {
+  project  = google_cloud_run_v2_job.railway_ingest_corpus.project
+  location = google_cloud_run_v2_job.railway_ingest_corpus.location
+  name     = google_cloud_run_v2_job.railway_ingest_corpus.name
+
+  role   = "roles/run.developer"
+  member = "serviceAccount:${data.google_service_account.railway_ingestion_ci.email}"
+}
