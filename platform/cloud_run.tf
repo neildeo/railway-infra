@@ -39,3 +39,12 @@ resource "google_cloud_run_v2_job_iam_member" "railway_ingestion_ci_corpus_devel
   role   = "roles/run.developer"
   member = "serviceAccount:${data.google_service_account.railway_ingestion_ci.email}"
 }
+
+resource "google_cloud_run_v2_job_iam_member" "scheduler_corpus_invoker" {
+  project  = google_cloud_run_v2_job.railway_ingest_corpus.project
+  location = google_cloud_run_v2_job.railway_ingest_corpus.location
+  name     = google_cloud_run_v2_job.railway_ingest_corpus.name
+
+  role   = "roles/run.invoker"
+  member = "serviceAccount:${google_service_account.cloud_scheduler.email}"
+}
