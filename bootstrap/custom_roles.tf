@@ -46,6 +46,15 @@ resource "google_project_iam_custom_role" "terraform_plan" {
     "cloudscheduler.jobs.list",
     "cloudscheduler.locations.get",
     "cloudscheduler.locations.list",
+
+    "monitoring.alertPolicies.get",
+    "monitoring.alertPolicies.list",
+
+    "monitoring.notificationChannels.get",
+    "monitoring.notificationChannels.list",
+
+    "monitoring.notificationChannelDescriptors.get",
+    "monitoring.notificationChannelDescriptors.list",
   ]
 
   project = local.project_id
@@ -80,6 +89,14 @@ resource "google_project_iam_custom_role" "terraform_apply" {
     "cloudscheduler.jobs.update",
     "cloudscheduler.jobs.delete",
     "cloudscheduler.jobs.enable",
+
+    "monitoring.alertPolicies.create",
+    "monitoring.alertPolicies.update",
+    "monitoring.alertPolicies.delete",
+
+    "monitoring.notificationChannels.create",
+    "monitoring.notificationChannels.update",
+    "monitoring.notificationChannels.delete",
   ]
 
   project = local.project_id

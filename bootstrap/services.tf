@@ -25,3 +25,10 @@ resource "google_project_service" "cloud_scheduler" {
 
   disable_on_destroy = false
 }
+
+resource "google_project_service" "monitoring" {
+  project = data.google_project.current.project_id
+  service = "monitoring.googleapis.com"
+
+  disable_on_destroy = false
+}
