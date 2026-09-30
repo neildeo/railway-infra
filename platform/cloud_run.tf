@@ -9,6 +9,8 @@ resource "google_cloud_run_v2_job" "railway_ingest_corpus" {
     template {
       service_account = google_service_account.railway_ingest_runner.email
 
+      max_retries = 0
+
       containers {
         image = local.default_cloud_run_job_image
 
