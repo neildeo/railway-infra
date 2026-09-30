@@ -68,6 +68,8 @@ jobs:
 
   plan:
     name: Plan (${{ matrix.root }})
+    env: 
+      TF_VAR_alert_email: ${{ secrets.ALERT_EMAIL }}
     needs: detect-roots
 
     if: needs.detect-roots.outputs.roots != '[]'
