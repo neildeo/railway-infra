@@ -70,3 +70,51 @@ resource "google_monitoring_alert_policy" "cloud_run_job_failure" {
     google_monitoring_notification_channel.email.name,
   ]
 }
+
+
+resource "google_monitoring_alert_policy" "schedule_publication_stale" {
+  project      = data.google_project.current.project_id
+  display_name = "SCHEDULE publication stale"
+  combiner     = "OR"
+  severity     = "WARNING"
+
+  conditions {
+    display_name = "Early SCHEDULE update found stale publication"
+
+    condition_matched_log {
+      filter = <<-EOT
+        resource.type = "cloud_run_job"
+        AND resource.labels.job_name = "railway-ingest-schedule-update-early"
+        AND jsonPayload.event = "schedule_publication_stale"
+      EOT
+    }
+  }
+
+  alert_strategy {
+    notification_rate_limit {
+      period = "300s"
+    }
+
+    auto_close = "3600s"
+  }
+
+  documentation {
+    mime_type = "text/markdown"
+
+    subject = "SCHEDULE publication stale"
+
+    content = <<-EOT
+    ## SCHEDULE publication is stale
+
+    The early daily SCHEDULE update run found that Network Rail's requested weekday slot had not yet rolled forward.
+
+    This is not yet a job failure. The 11:00 deadline run will require a fresh publication. This run will fail loudly if it encounters a stale file.
+
+    **No action required**
+    EOT
+  }
+
+  notification_channels = [
+    google_monitoring_notification_channel.email.name,
+  ]
+}
