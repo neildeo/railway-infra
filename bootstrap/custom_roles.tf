@@ -55,6 +55,9 @@ resource "google_project_iam_custom_role" "terraform_plan" {
 
     "monitoring.notificationChannelDescriptors.get",
     "monitoring.notificationChannelDescriptors.list",
+
+    "logging.notificationRules.get",
+    "logging.notificationRules.list",
   ]
 
   project = local.project_id
@@ -97,6 +100,10 @@ resource "google_project_iam_custom_role" "terraform_apply" {
     "monitoring.notificationChannels.create",
     "monitoring.notificationChannels.update",
     "monitoring.notificationChannels.delete",
+
+    "logging.notificationRules.create",
+    "logging.notificationRules.update",
+    "logging.notificationRules.delete",
   ]
 
   project = local.project_id
