@@ -38,7 +38,7 @@ resource "google_privileged_access_manager_entitlement" "terraform_apply" {
       }
 
       role_bindings {
-        role = "roles.bigquery/admin"
+        role = "roles/bigquery.admin"
       }
     }
   }
