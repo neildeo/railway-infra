@@ -70,3 +70,69 @@ resource "google_bigquery_table" "schedule_schedules" {
 
   deletion_protection = true
 }
+
+# =============================================================================
+# INTEGRATION TESTING DATASET + TABLES
+# =============================================================================
+resource "google_bigquery_dataset" "integration_test" {
+  project     = data.google_project.current.project_id
+  dataset_id  = "integration_test"
+  location    = "EU"
+  description = "Disposable BigQuery resources for railway ingestion integration tests."
+
+  delete_contents_on_destroy = true
+}
+
+resource "google_bigquery_table" "integration_test_schedule_publications" {
+  project    = data.google_project.current.project_id
+  dataset_id = google_bigquery_dataset.integration_test.dataset_id
+  table_id   = "schedule_publications"
+
+  schema = file(
+    "${path.module}/schemas/raw/schedule/schedule_publications.json"
+  )
+
+  deletion_protection = false
+}
+
+resource "google_bigquery_table" "integration_test_schedule_tiplocs" {
+  project    = data.google_project.current.project_id
+  dataset_id = google_bigquery_dataset.integration_test.dataset_id
+  table_id   = "schedule_tiplocs"
+
+  schema = file(
+    "${path.module}/schemas/raw/schedule/schedule_tiplocs.json"
+  )
+
+  clustering = ["publication_sequence"]
+
+  deletion_protection = false
+}
+
+resource "google_bigquery_table" "integration_test_schedule_associations" {
+  project    = data.google_project.current.project_id
+  dataset_id = google_bigquery_dataset.integration_test.dataset_id
+  table_id   = "schedule_associations"
+
+  schema = file(
+    "${path.module}/schemas/raw/schedule/schedule_associations.json"
+  )
+
+  clustering = ["publication_sequence"]
+
+  deletion_protection = false
+}
+
+resource "google_bigquery_table" "integration_test_schedule_schedules" {
+  project    = data.google_project.current.project_id
+  dataset_id = google_bigquery_dataset.integration_test.dataset_id
+  table_id   = "schedule_schedules"
+
+  schema = file(
+    "${path.module}/schemas/raw/schedule/schedule_schedules.json"
+  )
+
+  clustering = ["publication_sequence"]
+
+  deletion_protection = false
+}
