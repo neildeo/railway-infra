@@ -71,6 +71,24 @@ resource "google_bigquery_table" "schedule_schedules" {
   deletion_protection = true
 }
 
+resource "google_bigquery_table" "load_audit" {
+  project     = data.google_project.current.project_id
+  dataset_id  = google_bigquery_dataset.raw.dataset_id
+  table_id    = "load_audit"
+  description = "Terminal audit records for raw ingestion load attempts across source feeds."
+
+  schema = file(
+    "${path.module}/schemas/raw/load_audit.json"
+  )
+
+  clustering = [
+    "source_feed",
+    "record_family",
+  ]
+
+  deletion_protection = true
+}
+
 # =============================================================================
 # INTEGRATION TESTING DATASET + TABLES
 # =============================================================================
