@@ -154,3 +154,20 @@ resource "google_bigquery_table" "integration_test_schedule_schedules" {
 
   deletion_protection = false
 }
+
+resource "google_bigquery_table" "integration_test_load_audit" {
+  project    = data.google_project.current.project_id
+  dataset_id = google_bigquery_dataset.integration_test.dataset_id
+  table_id   = "load_audit"
+
+  schema = file(
+    "${path.module}/schemas/raw/load_audit.json"
+  )
+
+  clustering = [
+    "source_feed",
+    "record_family",
+  ]
+
+  deletion_protection = false
+}
