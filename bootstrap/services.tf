@@ -39,3 +39,10 @@ resource "google_project_service" "bigquery" {
 
   disable_on_destroy = false
 }
+
+resource "google_project_service" "workflows" {
+  project = data.google_project.current.project_id
+  service = "workflows.googleapis.com"
+
+  disable_on_destroy = false
+}
