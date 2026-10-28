@@ -16,3 +16,9 @@ resource "google_service_account" "cloud_scheduler" {
   account_id   = "railway-cloud-scheduler"
   display_name = "Railway Cloud Scheduler"
 }
+
+resource "google_service_account" "schedule_loader_workflow" {
+  project      = data.google_project.current.project_id
+  account_id   = "schedule-loader-workflow"
+  display_name = "SCHEDULE loader workflow"
+}

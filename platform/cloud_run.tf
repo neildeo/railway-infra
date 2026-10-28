@@ -179,3 +179,12 @@ resource "google_cloud_run_v2_job_iam_member" "railway_ingestion_ci_schedule_loa
   role   = "roles/run.developer"
   member = "serviceAccount:${data.google_service_account.railway_ingestion_ci.email}"
 }
+
+resource "google_cloud_run_v2_job_iam_member" "schedule_loader_workflow_invoker" {
+  project  = google_cloud_run_v2_job.railway_ingest_schedule_loader.project
+  location = google_cloud_run_v2_job.railway_ingest_schedule_loader.location
+  name     = google_cloud_run_v2_job.railway_ingest_schedule_loader.name
+
+  role   = "roles/run.invoker"
+  member = "serviceAccount:${google_service_account.schedule_loader_workflow.email}"
+}
