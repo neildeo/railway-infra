@@ -40,6 +40,19 @@ resource "google_privileged_access_manager_entitlement" "terraform_apply" {
       role_bindings {
         role = "roles/bigquery.admin"
       }
+
+      role_bindings {
+        role = "roles/resourcemanager.projectIamAdmin"
+
+        condition_expression = <<-EOT
+    api.getAttribute(
+      "iam.googleapis.com/modifiedGrantsByRole",
+      []
+    ).hasOnly([
+      "roles/logging.logWriter"
+    ])
+  EOT
+      }
     }
   }
 
