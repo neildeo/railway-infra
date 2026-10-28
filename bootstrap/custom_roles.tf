@@ -58,6 +58,13 @@ resource "google_project_iam_custom_role" "terraform_plan" {
 
     "logging.notificationRules.get",
     "logging.notificationRules.list",
+
+    "workflows.locations.get",
+    "workflows.locations.list",
+    "workflows.operations.get",
+    "workflows.operations.list",
+    "workflows.workflows.get",
+    "workflows.workflows.list",
   ]
 
   project = local.project_id
@@ -104,6 +111,10 @@ resource "google_project_iam_custom_role" "terraform_apply" {
     "logging.notificationRules.create",
     "logging.notificationRules.update",
     "logging.notificationRules.delete",
+
+    "workflows.workflows.create",
+    "workflows.workflows.update",
+    "workflows.workflows.delete",
   ]
 
   project = local.project_id
