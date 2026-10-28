@@ -1,5 +1,5 @@
 main:
-  params: [object, generation]
+  params: [args]
 
   steps:
     - init:
@@ -29,8 +29,8 @@ main:
                         containerOverrides:
                           env:
                             - name: SOURCE_OBJECT
-                              value: ${object}
+                              value: ${args.object}
                             - name: SOURCE_GENERATION
-                              value: ${string(generation)}
+                              value: ${string(args.generation)}
                             - name: RECORD_TYPE
                               value: ${record_type}
