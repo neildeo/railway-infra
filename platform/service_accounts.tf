@@ -22,3 +22,9 @@ resource "google_service_account" "schedule_loader_workflow" {
   account_id   = "schedule-loader-workflow"
   display_name = "SCHEDULE loader workflow"
 }
+
+resource "google_project_iam_member" "schedule_loader_workflow_logs_writer" {
+  project = data.google_project.current.project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.schedule_loader_workflow.email}"
+}
