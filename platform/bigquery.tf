@@ -7,6 +7,14 @@ resource "google_bigquery_dataset" "raw" {
   delete_contents_on_destroy = false
 }
 
+resource "google_bigquery_dataset_iam_member" "railway_ingest_runner_raw_data_editor" {
+  project    = data.google_project.current.project_id
+  dataset_id = google_bigquery_dataset.raw.dataset_id
+
+  role   = "roles/bigquery.dataEditor"
+  member = "serviceAccount:${google_service_account.railway_ingest_runner.email}"
+}
+
 resource "google_bigquery_table" "schedule_publications" {
   project     = data.google_project.current.project_id
   dataset_id  = google_bigquery_dataset.raw.dataset_id
