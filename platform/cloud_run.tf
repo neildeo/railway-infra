@@ -188,3 +188,13 @@ resource "google_cloud_run_v2_job_iam_member" "schedule_loader_workflow_executor
   role   = "roles/run.jobsExecutorWithOverrides"
   member = "serviceAccount:${google_service_account.schedule_loader_workflow.email}"
 }
+
+# Needed to determine success of jobs launched by the workflow
+resource "google_cloud_run_v2_job_iam_member" "schedule_loader_workflow_viewer" {
+  project  = google_cloud_run_v2_job.railway_ingest_schedule_loader.project
+  location = google_cloud_run_v2_job.railway_ingest_schedule_loader.location
+  name     = google_cloud_run_v2_job.railway_ingest_schedule_loader.name
+
+  role   = "roles/run.viewer"
+  member = "serviceAccount:${google_service_account.schedule_loader_workflow.email}"
+}
