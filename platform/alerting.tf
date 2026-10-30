@@ -118,3 +118,60 @@ resource "google_monitoring_alert_policy" "schedule_publication_stale" {
     google_monitoring_notification_channel.email.name,
   ]
 }
+
+
+resource "google_monitoring_alert_policy" "schedule_loader_workflow_failure" {
+  project      = data.google_project.current.project_id
+  display_name = "SCHEDULE loader workflow failure"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Failed SCHEDULE loader workflow execution"
+
+    condition_threshold {
+      filter = <<-EOT
+        resource.type = "workflows.googleapis.com/Workflow"
+        AND resource.label.workflow_id = "railway-load-schedule-object"
+        AND metric.type = "workflows.googleapis.com/finished_execution_count"
+        AND metric.label.status = "FAILED"
+      EOT
+
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+      duration        = "0s"
+
+      aggregations {
+        alignment_period     = "60s"
+        per_series_aligner   = "ALIGN_SUM"
+        cross_series_reducer = "REDUCE_SUM"
+
+        group_by_fields = [
+          "resource.label.workflow_id",
+          "resource.label.location",
+        ]
+      }
+    }
+  }
+
+  documentation {
+    mime_type = "text/markdown"
+
+    subject = "SCHEDULE loader workflow failed"
+
+    content = <<-EOT
+    ## SCHEDULE loader workflow execution failed
+
+    **Workflow:** `$${resource.label.workflow_id}`  
+    **Location:** `$${resource.label.location}`  
+    **Project:** `$${resource.project}`
+
+    A SCHEDULE loader workflow execution completed with a failed status.
+
+    Investigate the failed workflow execution and associated Cloud Run Job executions.
+  EOT
+  }
+
+  notification_channels = [
+    google_monitoring_notification_channel.email.name,
+  ]
+}
