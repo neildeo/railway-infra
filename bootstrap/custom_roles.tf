@@ -65,6 +65,13 @@ resource "google_project_iam_custom_role" "terraform_plan" {
     "workflows.operations.list",
     "workflows.workflows.get",
     "workflows.workflows.list",
+
+    "eventarc.locations.get",
+    "eventarc.locations.list",
+    "eventarc.operations.get",
+    "eventarc.operations.list",
+    "eventarc.triggers.get",
+    "eventarc.triggers.list",
   ]
 
   project = local.project_id
@@ -115,6 +122,10 @@ resource "google_project_iam_custom_role" "terraform_apply" {
     "workflows.workflows.create",
     "workflows.workflows.update",
     "workflows.workflows.delete",
+
+    "eventarc.triggers.create",
+    "eventarc.triggers.update",
+    "eventarc.triggers.delete",
   ]
 
   project = local.project_id
