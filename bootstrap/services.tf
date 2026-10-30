@@ -54,6 +54,13 @@ resource "google_project_service" "eventarc" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "eventarc_publishing" {
+  project = data.google_project.current.project_id
+  service = "eventarcpublishing.googleapis.com"
+
+  disable_on_destroy = false
+}
+
 resource "google_project_service" "pubsub" {
   project = data.google_project.current.project_id
   service = "pubsub.googleapis.com"
