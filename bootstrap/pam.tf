@@ -45,13 +45,16 @@ resource "google_privileged_access_manager_entitlement" "terraform_apply" {
         role = "roles/resourcemanager.projectIamAdmin"
 
         condition_expression = <<-EOT
-    api.getAttribute(
-      "iam.googleapis.com/modifiedGrantsByRole",
-      []
-    ).hasOnly([
-      "roles/logging.logWriter"
-    ])
-  EOT
+          api.getAttribute(
+            "iam.googleapis.com/modifiedGrantsByRole",
+            []
+          )..hasOnly([
+            "roles/logging.logWriter",
+            "roles/eventarc.eventReceiver",
+            "roles/workflows.invoker",
+            "roles/pubsub.publisher",
+          ])
+        EOT
       }
     }
   }

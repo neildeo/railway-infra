@@ -46,3 +46,17 @@ resource "google_project_service" "workflows" {
 
   disable_on_destroy = false
 }
+
+resource "google_project_service" "eventarc" {
+  project = data.google_project.current.project_id
+  service = "eventarc.googleapis.com"
+
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "pubsub" {
+  project = data.google_project.current.project_id
+  service = "pubsub.googleapis.com"
+
+  disable_on_destroy = false
+}
