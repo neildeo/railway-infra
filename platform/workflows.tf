@@ -7,6 +7,10 @@ resource "google_workflows_workflow" "schedule_loader" {
 
   deletion_protection = false
 
+  user_env_vars = {
+    source_bucket = google_storage_bucket.network_rail_open_data_raw.name
+  }
+
   source_contents = file(
     "${path.module}/workflows/schedule_loader.yaml"
   )
