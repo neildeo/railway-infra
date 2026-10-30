@@ -62,13 +62,13 @@ main:
         raise: "Workflow input must be either a Cloud Storage Eventarc event or contain object and generation."
 
     - invalid_bucket:
-        raise: ${"Unexpected source bucket: " + string(source_bucket)}
+        raise: '${"Unexpected source bucket: " + string(source_bucket)}'
 
     - invalid_generation:
         raise: "Source generation is required."
 
     - invalid_object:
-        raise: ${"Unexpected SCHEDULE object path: " + source_object}
+        raise: '${"Unexpected SCHEDULE object path: " + source_object}'
 
     - load_record_families:
         parallel:
