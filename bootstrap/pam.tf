@@ -48,7 +48,7 @@ resource "google_privileged_access_manager_entitlement" "terraform_apply" {
           api.getAttribute(
             "iam.googleapis.com/modifiedGrantsByRole",
             []
-          )..hasOnly([
+          ).hasOnly([
             "roles/logging.logWriter",
             "roles/eventarc.eventReceiver",
             "roles/workflows.invoker",
