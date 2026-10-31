@@ -49,7 +49,27 @@ main:
           - condition: ${source_generation == null}
             next: invalid_generation
 
-        next: validate_object
+        next: route_object
+
+    - route_object:
+        switch:
+          - condition: ${text.match_regex(source_object, "^schedules/.*")}
+            next: validate_object
+
+        next: log_ignored_object
+
+    - log_ignored_object:
+        call: sys.log
+        args:
+          severity: INFO
+          json:
+            event: schedule_loader_object_ignored
+            source_object: ${source_object}
+            source_generation: ${string(source_generation)}
+        next: ignored_object
+
+    - ignored_object:
+        return: "Ignored non-SCHEDULE object"
 
     - validate_object:
         switch:
