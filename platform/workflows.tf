@@ -8,7 +8,8 @@ resource "google_workflows_workflow" "schedule_loader" {
   deletion_protection = false
 
   user_env_vars = {
-    source_bucket = google_storage_bucket.network_rail_open_data_raw.name
+    source_bucket   = google_storage_bucket.network_rail_open_data_raw.name
+    default_dataset = google_bigquery_dataset.raw.dataset_id
   }
 
   source_contents = file(
