@@ -15,14 +15,6 @@ resource "google_bigquery_dataset_iam_member" "railway_ingest_runner_raw_data_ed
   member = "serviceAccount:${google_service_account.railway_ingest_runner.email}"
 }
 
-resource "google_bigquery_dataset_iam_member" "railway_ingest_runner_integration_test_data_editor" {
-  project    = data.google_project.current.project_id
-  dataset_id = google_bigquery_dataset.integration_test.dataset_id
-
-  role   = "roles/bigquery.dataEditor"
-  member = "serviceAccount:${google_service_account.railway_ingest_runner.email}"
-}
-
 resource "google_bigquery_table" "schedule_publications" {
   project     = data.google_project.current.project_id
   dataset_id  = google_bigquery_dataset.raw.dataset_id
@@ -115,6 +107,14 @@ resource "google_bigquery_dataset" "integration_test" {
   description = "Disposable BigQuery resources for railway ingestion integration tests."
 
   delete_contents_on_destroy = true
+}
+
+resource "google_bigquery_dataset_iam_member" "railway_ingest_runner_integration_test_data_editor" {
+  project    = data.google_project.current.project_id
+  dataset_id = google_bigquery_dataset.integration_test.dataset_id
+
+  role   = "roles/bigquery.dataEditor"
+  member = "serviceAccount:${google_service_account.railway_ingest_runner.email}"
 }
 
 resource "google_bigquery_table" "integration_test_schedule_publications" {
