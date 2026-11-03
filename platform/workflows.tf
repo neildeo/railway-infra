@@ -16,3 +16,10 @@ resource "google_workflows_workflow" "schedule_loader" {
     "${path.module}/workflows/schedule_loader.yaml"
   )
 }
+
+
+resource "google_project_iam_member" "schedule_load_backfill_workflows_invoker" {
+  project = data.google_project.current.project_id
+  role    = "roles/workflows.invoker"
+  member  = "serviceAccount:${google_service_account.schedule_load_backfill.email}"
+}

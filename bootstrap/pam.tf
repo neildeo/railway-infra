@@ -53,6 +53,7 @@ resource "google_privileged_access_manager_entitlement" "terraform_apply" {
             "roles/eventarc.eventReceiver",
             "roles/workflows.invoker",
             "roles/pubsub.publisher",
+            "roles/bigquery.jobUser",
           ])
         EOT
       }

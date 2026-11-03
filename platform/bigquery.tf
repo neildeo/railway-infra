@@ -187,3 +187,27 @@ resource "google_bigquery_table" "integration_test_load_audit" {
 
   deletion_protection = false
 }
+
+resource "google_project_iam_member" "schedule_load_backfill_bigquery_job_user" {
+  project = data.google_project.current.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${google_service_account.schedule_load_backfill.email}"
+}
+
+resource "google_bigquery_table_iam_member" "schedule_load_backfill_raw_load_audit_viewer" {
+  project    = google_bigquery_table.load_audit.project
+  dataset_id = google_bigquery_table.load_audit.dataset_id
+  table_id   = google_bigquery_table.load_audit.table_id
+
+  role   = "roles/bigquery.dataViewer"
+  member = "serviceAccount:${google_service_account.schedule_load_backfill.email}"
+}
+
+resource "google_bigquery_table_iam_member" "schedule_load_backfill_integration_test_load_audit_viewer" {
+  project    = google_bigquery_table.integration_test_load_audit.project
+  dataset_id = google_bigquery_table.integration_test_load_audit.dataset_id
+  table_id   = google_bigquery_table.integration_test_load_audit.table_id
+
+  role   = "roles/bigquery.dataViewer"
+  member = "serviceAccount:${google_service_account.schedule_load_backfill.email}"
+}

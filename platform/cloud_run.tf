@@ -198,3 +198,91 @@ resource "google_cloud_run_v2_job_iam_member" "schedule_loader_workflow_viewer" 
   role   = "roles/run.viewer"
   member = "serviceAccount:${google_service_account.schedule_loader_workflow.email}"
 }
+
+
+resource "google_cloud_run_v2_job" "railway_ingest_schedule_load_backfill" {
+  project  = data.google_project.current.project_id
+  name     = "railway-ingest-schedule-load-backfill"
+  location = "europe-west1"
+
+  deletion_protection = false
+
+  template {
+    template {
+      service_account = google_service_account.schedule_load_backfill.email
+
+      max_retries = 0
+      timeout     = "14400s"
+
+      containers {
+        image = local.default_cloud_run_job_image
+
+        env {
+          name  = "BQ_PROJECT"
+          value = data.google_project.current.project_id
+        }
+
+        env {
+          name  = "SOURCE_BUCKET"
+          value = google_storage_bucket.network_rail_open_data_raw.name
+        }
+
+        env {
+          name  = "BQ_DATASET"
+          value = google_bigquery_dataset.raw.dataset_id
+        }
+
+        env {
+          name = "WORKFLOW_PARENT"
+          value = join("/", [
+            "projects",
+            data.google_project.current.project_id,
+            "locations",
+            google_workflows_workflow.schedule_loader.region,
+            "workflows",
+            google_workflows_workflow.schedule_loader.name,
+          ])
+        }
+
+        env {
+          name  = "MAX_IN_FLIGHT"
+          value = "10"
+        }
+
+        env {
+          name  = "POLL_INTERVAL_SECONDS"
+          value = "10"
+        }
+
+        env {
+          name  = "DRY_RUN"
+          value = "true"
+        }
+
+        resources {
+          limits = {
+            cpu    = "1"
+            memory = "512Mi"
+          }
+        }
+      }
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      client,
+      client_version,
+      template[0].template[0].containers[0].image,
+    ]
+  }
+}
+
+resource "google_cloud_run_v2_job_iam_member" "railway_ingestion_ci_schedule_load_backfill_developer" {
+  project  = google_cloud_run_v2_job.railway_ingest_schedule_load_backfill.project
+  location = google_cloud_run_v2_job.railway_ingest_schedule_load_backfill.location
+  name     = google_cloud_run_v2_job.railway_ingest_schedule_load_backfill.name
+
+  role   = "roles/run.developer"
+  member = "serviceAccount:${data.google_service_account.railway_ingestion_ci.email}"
+}

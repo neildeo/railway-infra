@@ -28,3 +28,16 @@ resource "google_project_iam_member" "schedule_loader_workflow_logs_writer" {
   role    = "roles/logging.logWriter"
   member  = "serviceAccount:${google_service_account.schedule_loader_workflow.email}"
 }
+
+resource "google_service_account" "schedule_load_backfill" {
+  project      = data.google_project.current.project_id
+  account_id   = "schedule-load-backfill"
+  display_name = "SCHEDULE load backfill coordinator"
+}
+
+resource "google_service_account_iam_member" "railway_ingestion_ci_schedule_load_backfill_act_as" {
+  service_account_id = google_service_account.schedule_load_backfill.name
+
+  role   = "roles/iam.serviceAccountUser"
+  member = "serviceAccount:${data.google_service_account.railway_ingestion_ci.email}"
+}
