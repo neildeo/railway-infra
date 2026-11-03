@@ -23,3 +23,10 @@ resource "google_storage_bucket_iam_member" "railway_ingest_runner_raw_object_us
 
   member = "serviceAccount:${google_service_account.railway_ingest_runner.email}"
 }
+
+resource "google_storage_bucket_iam_member" "schedule_load_backfill_raw_object_viewer" {
+  bucket = google_storage_bucket.network_rail_open_data_raw.name
+  role   = "roles/storage.objectViewer"
+
+  member = "serviceAccount:${google_service_account.schedule_load_backfill.email}"
+}
