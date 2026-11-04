@@ -55,6 +55,9 @@ jobs:
               platform/*)
                 add_root "platform"
                 ;;
+              .github/workflows/terraform-apply.yml)
+                add_root "platform"
+                ;;
             esac
           done
 
@@ -112,7 +115,31 @@ jobs:
         run: terraform init -input=false
 
       - name: Create saved plan
-        run: terraform plan -input=false -out=tfplan
+        id: terraform-plan
+        shell: bash
+        run: |
+          set +e
+
+          terraform plan \
+            -input=false \
+            -detailed-exitcode \
+            -out=tfplan
+
+          exit_code=$?
+
+          set -e
+
+          case "$exit_code" in
+            0)
+              echo "has_changes=false" >> "$GITHUB_OUTPUT"
+              ;;
+            2)
+              echo "has_changes=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              exit "$exit_code"
+              ;;
+          esac
 
       - name: Render human-readable plan
         run: terraform show -no-color tfplan > plan.txt
@@ -129,6 +156,17 @@ jobs:
             plan.txt \
             "gs://${ARTIFACT_BUCKET}/plans/${{ github.run_id }}/${{ matrix.root }}.txt"
 
+      - name: Upload plan change status to GCS
+        shell: bash
+        env:
+          HAS_CHANGES: ${{ steps.terraform-plan.outputs.has_changes }}
+        run: |
+          printf '%s\n' "$HAS_CHANGES" > has_changes.txt
+
+          gcloud storage cp \
+            has_changes.txt \
+            "gs://${ARTIFACT_BUCKET}/plans/${{ github.run_id }}/${{ matrix.root }}.has_changes"
+
   review-plans:
     name: Review Terraform plans
     needs:
@@ -143,6 +181,9 @@ jobs:
       contents: read
       id-token: write
 
+    outputs:
+      has_changes: ${{ steps.summary.outputs.has_changes }}
+
     steps:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
@@ -155,6 +196,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
 
       - name: Build plan summary
+        id: summary
         shell: bash
         env:
           ROOTS: ${{ needs.detect-roots.outputs.roots }}
@@ -169,6 +211,8 @@ jobs:
           mapfile -t roots < <(
             printf '%s' "$ROOTS" | jq -r '.[]'
           )
+
+          has_changes=false
 
           for root in "${roots[@]}"; do
             plan_file="${root}.txt"
@@ -187,6 +231,23 @@ jobs:
               plan_summary="See full plan below."
             fi
 
+            root_has_changes="$(
+              gcloud storage cat \
+                "gs://${ARTIFACT_BUCKET}/plans/${{ github.run_id }}/${root}.has_changes"
+            )"
+
+            case "$root_has_changes" in
+              true)
+                has_changes=true
+                ;;
+              false)
+                ;;
+              *)
+                echo "Unexpected change status for ${root}: $root_has_changes"
+                exit 1
+                ;;
+            esac
+
             {
               echo "## ${root}"
               echo
@@ -204,13 +265,18 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           done
 
+          echo "has_changes=$has_changes" >> "$GITHUB_OUTPUT"
+
   request-pam:
     name: Request Terraform apply access
     needs:
       - detect-roots
       - review-plans
 
-    if: needs.detect-roots.outputs.roots != '[]' && needs.review-plans.result == 'success'
+    if: >
+      needs.detect-roots.outputs.roots != '[]' &&
+      needs.review-plans.result == 'success' &&
+      needs.review-plans.outputs.has_changes == 'true'
 
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -299,9 +365,13 @@ jobs:
     name: Apply (${{ matrix.root }})
     needs:
       - detect-roots
+      - review-plans
       - request-pam
 
-    if: needs.detect-roots.outputs.roots != '[]' && needs.request-pam.result == 'success'
+    if: >
+      needs.detect-roots.outputs.roots != '[]' &&
+      needs.review-plans.outputs.has_changes == 'true' &&
+      needs.request-pam.result == 'success'
 
     strategy:
       fail-fast: false
@@ -494,6 +564,7 @@ jobs:
       DETECT_RESULT: ${{ needs.detect-roots.result }}
       PLAN_RESULT: ${{ needs.plan.result }}
       REVIEW_RESULT: ${{ needs.review-plans.result }}
+      HAS_CHANGES: ${{ needs.review-plans.outputs.has_changes }}
       PAM_RESULT: ${{ needs.request-pam.result }}
       APPLY_RESULT: ${{ needs.apply.result }}
       CLEANUP_RESULT: ${{ needs.cleanup-plans.result }}
@@ -523,6 +594,22 @@ jobs:
           if [[ "$REVIEW_RESULT" != "success" ]]; then
             echo "Terraform plan summary failed."
             exit 1
+          fi
+
+          if [[ "$HAS_CHANGES" != "true" ]]; then
+            echo "Terraform plan contains no changes; no apply required."
+
+            if [[ "$CLEANUP_RESULT" != "success" ]]; then
+              echo "Temporary plan cleanup failed."
+              exit 1
+            fi
+
+            if [[ "$PAM_CLEANUP_RESULT" != "success" ]]; then
+              echo "PAM cleanup check failed."
+              exit 1
+            fi
+
+            exit 0
           fi
 
           if [[ "$PAM_RESULT" != "success" ]]; then
