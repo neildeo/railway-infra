@@ -115,7 +115,31 @@ jobs:
         run: terraform init -input=false
 
       - name: Create saved plan
-        run: terraform plan -input=false -out=tfplan
+        id: terraform-plan
+        shell: bash
+        run: |
+          set +e
+
+          terraform plan \
+            -input=false \
+            -detailed-exitcode \
+            -out=tfplan
+
+          exit_code=$?
+
+          set -e
+
+          case "$exit_code" in
+            0)
+              echo "has_changes=false" >> "$GITHUB_OUTPUT"
+              ;;
+            2)
+              echo "has_changes=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              exit "$exit_code"
+              ;;
+          esac
 
       - name: Render human-readable plan
         run: terraform show -no-color tfplan > plan.txt
@@ -131,6 +155,17 @@ jobs:
           gcloud storage cp \
             plan.txt \
             "gs://${ARTIFACT_BUCKET}/plans/${{ github.run_id }}/${{ matrix.root }}.txt"
+
+      - name: Upload plan change status to GCS
+        shell: bash
+        env:
+          HAS_CHANGES: ${{ steps.terraform-plan.outputs.has_changes }}
+        run: |
+          printf '%s\n' "$HAS_CHANGES" > has_changes.txt
+
+          gcloud storage cp \
+            has_changes.txt \
+            "gs://${ARTIFACT_BUCKET}/plans/${{ github.run_id }}/${{ matrix.root }}.has_changes"
 
   review-plans:
     name: Review Terraform plans
@@ -196,9 +231,22 @@ jobs:
               plan_summary="See full plan below."
             fi
 
-            if ! grep -q '^No changes\.' "$plan_file"; then
-              has_changes=true
-            fi
+            root_has_changes="$(
+              gcloud storage cat \
+                "gs://${ARTIFACT_BUCKET}/plans/${{ github.run_id }}/${root}.has_changes"
+            )"
+
+            case "$root_has_changes" in
+              true)
+                has_changes=true
+                ;;
+              false)
+                ;;
+              *)
+                echo "Unexpected change status for ${root}: $root_has_changes"
+                exit 1
+                ;;
+            esac
 
             {
               echo "## ${root}"
