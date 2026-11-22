@@ -286,3 +286,44 @@ resource "google_cloud_run_v2_job_iam_member" "railway_ingestion_ci_schedule_loa
   role   = "roles/run.developer"
   member = "serviceAccount:${data.google_service_account.railway_ingestion_ci.email}"
 }
+
+
+resource "google_cloud_run_v2_instance" "railway_instance_test" {
+  project  = data.google_project.current.project_id
+  name     = "railway-instance-test"
+  location = "europe-west2"
+
+  launch_stage    = "BETA"
+  restart_policy  = "ALWAYS"
+  deletion_policy = "DELETE"
+
+  service_account = google_service_account.railway_ingest_runner.email
+
+  containers {
+    image = local.default_cloud_run_instance_image
+
+    resources {
+      limits = {
+        cpu    = "1"
+        memory = "1Gi"
+      }
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      client,
+      client_version,
+      containers[0].image,
+    ]
+  }
+}
+
+resource "google_cloud_run_v2_instance_iam_member" "railway_ingestion_ci_instance_test_developer" {
+  project  = google_cloud_run_v2_instance.railway_instance_test.project
+  location = google_cloud_run_v2_instance.railway_instance_test.location
+  name     = google_cloud_run_v2_instance.railway_instance_test.name
+
+  role   = "roles/run.developer"
+  member = "serviceAccount:${data.google_service_account.railway_ingestion_ci.email}"
+}

@@ -29,6 +29,9 @@ resource "google_project_iam_custom_role" "terraform_plan" {
     "run.jobs.get",
     "run.jobs.list",
     "run.jobs.getIamPolicy",
+    "run.instances.get",
+    "run.instances.list",
+    "run.instances.getIamPolicy",
     "run.locations.list",
     "run.operations.get",
 
@@ -96,6 +99,11 @@ resource "google_project_iam_custom_role" "terraform_apply" {
     "run.jobs.update",
     "run.jobs.delete",
     "run.jobs.setIamPolicy",
+
+    "run.instances.create",
+    "run.instances.update",
+    "run.instances.delete",
+    "run.instances.setIamPolicy",
 
     "secretmanager.secrets.create",
     "secretmanager.secrets.update",
