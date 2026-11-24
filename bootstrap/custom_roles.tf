@@ -138,3 +138,15 @@ resource "google_project_iam_custom_role" "terraform_apply" {
 
   project = local.project_id
 }
+
+
+resource "google_project_iam_custom_role" "cloud_run_operations_reader" {
+  project     = local.project_id
+  role_id     = "CloudRunOperationsReader"
+  title       = "Cloud Run Operations Reader"
+  description = "Allows CI to poll Cloud Run operations. This is required for CI/CD principals to determine the progress of deployments."
+
+  permissions = [
+    "run.operations.get",
+  ]
+}
